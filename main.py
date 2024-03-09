@@ -106,6 +106,7 @@ def add_arguments(parser):
             "era5",
             "vimeo90k",
             "librispeech",
+            "brats",
         ),
     )
 
@@ -120,6 +121,7 @@ def add_arguments(parser):
             "era5",
             "vimeo90k",
             "librispeech",
+            "brats",
         ),
     )
 

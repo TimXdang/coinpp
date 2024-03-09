@@ -4,3 +4,4 @@ kodak: ../datasets/kodak
 fastmri: ../datasets/fastmri
 era5: ../datasets/era5
 librispeech: ../datasets/librispeech
+brats: /home/tim_julian/data/BraTS_gen_INR_2d

@@ -1,3 +1,6 @@
+import os
+from typing import Callable, Optional
+from PIL import Image
 import imageio
 import requests
 import torch
@@ -6,6 +9,8 @@ import zipfile
 
 from pathlib import Path
 from typing import Any, Callable, Optional
+from torchvision.transforms import ToTensor
+from torchvision.datasets import VisionDataset
 
 
 class CIFAR10(torchvision.datasets.CIFAR10):
@@ -105,3 +110,68 @@ class Kodak(torch.utils.data.Dataset):
         body.append(f"Root location: {self.root}")
         lines = [head] + ["    " + line for line in body]
         return "\n".join(lines)
+
+
+class SliceInfo:
+    def __init__(self, img, patient, modality, img_slice):
+        self.img = img
+        self.patient = patient
+        self.modality = modality
+        self.img_slice = img_slice
+
+
+class BraTSGLIDataset(VisionDataset):
+
+    def __init__(self, root, transforms=None, transform=None, target_transform=None, split='train', modality='all') -> None:
+        super().__init__(root, transforms, transform, target_transform)
+
+        assert modality in ['all', 't1c', 't1n', 't2f', 't2w'], 'The requested modality is not valid.'
+
+        self.all_data = self._load_data()
+        self.num_patients = len(set([d.patient for d in self.all_data]))
+        if modality == 'all':
+            self.n_imgs = self.num_patients
+            data = self.all_data
+        elif modality == 't1c':
+            data = [d for d in self.all_data if d.modality == 't1c']
+            self.n_imgs = len(set([d.patient for d in data]))
+        elif modality == 't1n':
+            data = [d for d in self.all_data if d.modality == 't1n']
+            self.n_imgs = len(set([d.patient for d in data]))
+        elif modality == 't2f':
+            data = [d for d in self.all_data if d.modality == 't2f']
+            self.n_imgs = len(set([d.patient for d in data]))
+        elif modality == 't2w':
+            data = [d for d in self.all_data if d.modality == 't2w']
+            self.n_imgs = len(set([d.patient for d in data]))
+
+        if split == 'train':
+            split_idx = int(0.8 * self.n_imgs)
+            patients = sorted(set(d.patient for d in data))[:split_idx]
+            self.data = [d for d in data if d.patient in patients]
+        elif split == 'val':
+            split_idx = int(0.8 * self.n_imgs)
+            patients = sorted(set(d.patient for d in data))[split_idx:]
+            self.data = [d for d in data if d.patient in patients]
+
+    def _load_data(self):
+        img_folder = self.root
+        img_slices = []
+        for fname in sorted(os.listdir(img_folder)):
+            slice_info = SliceInfo(img=os.path.join(img_folder, fname), patient='-'.join(fname.split('-')[2:4]), modality=fname[20:23],
+                                   img_slice=fname[23:-5])
+            img_slices.append(slice_info)
+        return img_slices
+    
+    def __getitem__(self, index: int):
+        with Image.open(self.data[index].img) as img:
+            # Convert PIL Image to tensor
+            #img = ToTensor()(img)
+        
+            if self.transform is not None:
+                img = self.transform(img)
+
+        return img
+    
+    def __len__(self) -> int:
+        return len(self.data)

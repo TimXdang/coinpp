@@ -32,6 +32,9 @@ def dataset_name_to_dims(dataset_name):
     if dataset_name == "librispeech":
         dim_in = 1
         dim_out = 1
+    if dataset_name == "brats":
+        dim_in = 2
+        dim_out = 1
     return dim_in, dim_out
 
 
@@ -182,6 +185,27 @@ def get_datasets_and_converter(args, force_no_random_crop=False):
                 url="test-clean",
                 num_secs=3,
                 download=True,
+            )
+    
+    if "brats" in (args.train_dataset, args.test_dataset):
+        converter = conversion.Converter("image")
+
+        if args.train_dataset == "brats":
+            transforms = [torchvision.transforms.ToTensor()]
+            if use_patching and not force_no_random_crop:
+                transforms.append(random_crop)
+
+            train_dataset = image.BraTSGLIDataset(
+                root=get_dataset_root("brats"),
+                transform=torchvision.transforms.Compose(transforms),
+                split="train"
+            )
+
+        if args.test_dataset == "brats":
+            test_dataset = image.BraTSGLIDataset(
+                root=get_dataset_root("brats"),
+                transform=torchvision.transforms.ToTensor(),
+                split="val"
             )
 
     return train_dataset, test_dataset, converter
